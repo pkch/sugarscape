@@ -32,6 +32,13 @@ class Point:
         if len(self.coords) != len(other.coords):
             raise ValueError('lhs and rhs have different dimensions')
         
+    def __add__(self, other):
+        self.validate_dimensions(other)
+        if not isinstance(other, Direction):
+            raise NotImplemented
+        # Point + Direction -> Point
+        return Point(*[s + o for s, o in zip(self.coords, other.coords)])
+    
 
 class Direction(Point):
     def __add__(self, other):
@@ -40,11 +47,6 @@ class Direction(Point):
             raise NotImplemented
         # Direction + Direction -> Direction
         return Direction(*[s + o for s, o in zip(self.coords, other.coords)])
-
-    def __radd__(self, other):
-        self.validate_dimensions(other)
-        # Point + Direction -> Point
-        return Point(*[s + o for s, o in zip(self.coords, other.coords)])
 
     def __mul__(self, num):
         return Direction(*[s * num for s in self.coords])
