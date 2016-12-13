@@ -12,7 +12,7 @@
 # ? movement speed != vision distance (+ change target if not finished move)
 # ? move simultaneously (without coordinating) => might end up in the same location, have to resolve that
 
-import pytest
+import pytest, functools
 
 class Point:
     def __init__(self, *coords):
@@ -25,7 +25,7 @@ class Point:
     def __hash__(self):
         return hash(self.coords)
     
-    def __str__(self):
+    def __repr__(self):
         return self.__class__.__name__ + ': ' + ', '.join(map(str, self.coords))
     
     def validate_dimensions(self, other):
@@ -39,7 +39,20 @@ class Point:
         # Point + Direction -> Point
         return Point(*[s + o for s, o in zip(self.coords, other.coords)])
     
-
+class WrapAroundPoint(Point):
+    # we could have modified __eq__ and __hash__ (and __repr__) instead of __add__, but then dict lookup will be very expensive
+    def __init__(self, *coords, limits):
+        if len(coords) != len(limits):
+            raise ValueError('coords and limits dimensions do not match')
+        super().__init__(*coords)
+        self.limits = limits
+        
+    def __add__(self, other):
+        self.validate_dimensions(other)
+        if not isinstance(other, Direction):
+            raise NotImplemented
+        return WrapAroundPoint(*[(s + o) % limit for s, o, limit in zip(self.coords, other.coords, self.limits)], limits=self.limits)
+    
 class Direction(Point):
     def __add__(self, other):
         self.validate_dimensions(other)
@@ -50,34 +63,26 @@ class Direction(Point):
 
     def __mul__(self, num):
         return Direction(*[s * num for s in self.coords])
-    
-class WrapAroundDirection(Direction):
-    def __init__(self, *coords, limits):
-        if len(coords) != len(limits):
-            raise ValueError('coords and limits dimensions do not match')
-        super().__init__(*coords)
-        self.limits = limits
         
-    def __radd__(self, other):
-        self.validate_dimensions(other)
-        return Point(*[(s + o) % limit for s, o, limit in zip(self.coords, other.coords, self.limits)])
-    
-    def __mul__(self, num):
-        return WrapAroundDirection(*[s * num for s in self.coords], limits=self.limits)
-    
-    
 
 class SquareGrid:
-    def __init__(self, length, height):
-        self.map = {Point(x, y) for x in range(length) for y in range(height)}
-        limits = [length, height]
-        self.N = WrapAroundDirection(0, 1, limits=limits)
-        self.E = WrapAroundDirection(1, 0, limits=limits)
-        self.S = WrapAroundDirection(0, -1, limits=limits)
-        self.W = WrapAroundDirection(-1, 0, limits=limits)
-        self.directions = (self.N, self.E, self.S, self.W)
-    
-
+    N = Direction(0, 1)
+    E = Direction(1, 0)
+    S = Direction(0, -1)
+    W = Direction(-1, 0)
+    DIRECTIONS = (N, E, S, W)
+    def __init__(self, length, height, wraparound=True):
+        self.limits = (length, height)
+        self.wraparound = wraparound
+        if wraparound:
+            self.get_point = functools.partial(WrapAroundPoint, limits=self.limits)
+        else:
+            self.get_point = Point
+        self.map = {self.get_point(x, y) for x in range(length) for y in range(height)}
+        
+    def __repr__(self):
+        return self.__class__.__name__ + ('no ' if not self.wraparound else '') + 'wraparound' + ': {}'.format(self.limits) 
+        
 def test_point():
     p = Point(1, 1)
     d = Direction(2, 3)
@@ -88,9 +93,17 @@ def test_point():
         p + p
     assert str(p + d) == 'Point: 3, 4'
     
+def test_wa_point():
+    p = WrapAroundPoint(1, 1, limits=(3, 3))
+    d = Direction(2, 3)
+    assert p + d == WrapAroundPoint(0, 1, limits=(3, 3))
+    with pytest.raises(TypeError):
+        d + p
+        p + p
+    assert str(p + d) == 'WrapAroundPoint: 0, 1'    
 
 def test_square_grid():
     g = SquareGrid(10, 5)
-    p = Point(1, 1)
+    p = g.get_point(1, 1)
     assert p + g.N * 20 == p
-    assert p + g.N * 7 == Point(1, 3)
+    assert p + g.N * 7 == g.get_point(1, 3)
