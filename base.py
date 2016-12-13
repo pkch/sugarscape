@@ -63,25 +63,63 @@ class Direction(Point):
 
     def __mul__(self, num):
         return Direction(*[s * num for s in self.coords])
+    
+    def __rmul__(self, num):
+        return self * num
         
-
 class SquareGrid:
     N = Direction(0, 1)
     E = Direction(1, 0)
     S = Direction(0, -1)
     W = Direction(-1, 0)
-    DIRECTIONS = (N, E, S, W)
+    PRINCIPAL_DIRECTIONS = (N, E, S, W)
     def __init__(self, length, height, wraparound=True):
         self.limits = (length, height)
         self.wraparound = wraparound
+        # not sure if get_point should be part of public API; if not, we'll need to add methods to produce a circle around a given point, etc. - how many methods? do we have to add more all the time? 
         if wraparound:
             self.get_point = functools.partial(WrapAroundPoint, limits=self.limits)
         else:
             self.get_point = Point
-        self.map = {self.get_point(x, y) for x in range(length) for y in range(height)}
+        #self._map = {self.get_point(x, y) for x in range(length) for y in range(height)}
         
+    def get_circle(self, position, radius):
+        # must avoid repeating the same point twice (not just performance, but semantics)
+        circle = set()
+        for delta_x in range(-radius, radius+1):
+            for delta_y in range(-radius, radius+1):
+                if delta_x ** 2 + delta_y ** 2 <= radius ** 2:
+                    circle.add(position + delta_x * self.E + delta_y * self.N)
+        return circle
+    
+    def get_all_points(self):
+        length, height = self.limits
+        return (self.get_point(x, y) for x in range(length) for y in range(height))
+    
     def __repr__(self):
-        return self.__class__.__name__ + ('no ' if not self.wraparound else '') + 'wraparound' + ': {}'.format(self.limits) 
+        return self.__class__.__name__ + ('no ' if not self.wraparound else '') + 'wraparound' + ': {}'.format(self.limits)
+        
+
+# feels like this should belong inside Grid, or CircleVision should also be taken out 
+class PrincipalDirectionVision:
+    def __init__(self, distance):
+        self.distance = distance
+    
+    def get_visible_points(self, grid, position):
+        visible_points = {position}
+        for direction in grid.PRINCIPAL_DIRECTIONS:
+            for d in range(1, self.distance+1):
+                visible_points.add(position + d * direction)
+        return visible_points
+                
+                
+class CircleVision:
+    def __init__(self, distance):
+        self.distance = distance
+    
+    def get_visible_points(self, grid, position):
+        return grid.get_circle(position, self.distance)
+
         
 def test_point():
     p = Point(1, 1)
@@ -107,3 +145,19 @@ def test_square_grid():
     p = g.get_point(1, 1)
     assert p + g.N * 20 == p
     assert p + g.N * 7 == g.get_point(1, 3)
+
+def test_pd_vision():
+    g = SquareGrid(10, 5)
+    p = g.get_point(4, 4)
+    vision = PrincipalDirectionVision(2)
+    points = vision.get_visible_points(g, p)
+    assert set(points) == set(g.get_point(*coords) for coords in [(4, 4), (4, 0), (4, 1), (4, 3), (4, 2), (5, 4), (6, 4), (3, 4), (2, 4)])
+    
+def test_circle_vision():
+    g = SquareGrid(10, 5)
+    p = g.get_point(4, 4)
+    vision = CircleVision(2)
+    points = vision.get_visible_points(g, p)
+    assert set(points) == set(g.get_point(*coords) for coords in [(4, 4), (4, 0), (4, 1), (4, 3), (4, 2), (5, 4), (6, 4), (3, 4), (2, 4), (5, 0), (5, 3), (3, 0), (3, 3)])
+    vision = CircleVision(20)
+    assert set(vision.get_visible_points(g, p)) == set(g.get_all_points())
