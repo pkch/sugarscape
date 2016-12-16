@@ -32,8 +32,7 @@ def main():
 
     vision_gen = (grids.CircularVision(next(DISTANCE), p=VISION_P) for i in repeat(None))
     sugarscape.add_agents(N_AGENTS, metabolism_gen=METABOLISM, sugar_gen=repeat(INITIAL_SUGAR), vision_gen=vision_gen)
-    sugarscape.run(1)
-    sugarscape
+    sugarscape.interactive_run()
 
 if __name__ == '__main__':
     main()

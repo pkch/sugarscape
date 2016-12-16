@@ -1,4 +1,5 @@
 import random
+from itertools import count
 import resources, agents
 
 class World:
@@ -62,3 +63,28 @@ class World:
             agent.update()
         for position, sugar in self.sugar.items():
             sugar.update()
+
+    @classmethod
+    def display_matrix(cls, matrix):
+        hl = ' ' + '-' * (len(matrix[0]) * 2 - 1) + '\n'
+        return hl + '\n'.join('|' + ' '.join(row) + '|' for row in matrix) + '\n' + hl
+
+    def display(self):
+        matrix = [[self.display_cell(y=self.grid.height-row-1, x=col) for col in range(self.grid.length)] for row in range(self.grid.height)]
+        return self.display_matrix(matrix)
+
+    def display_cell(self, *, x, y):
+        if self.agent_at_position[x, y]:
+            return '*'
+        else:
+            return str(self.sugar[x, y].amount)
+
+    def interactive_run(self):
+        print(self.display())
+        for i in count():
+            s = input()
+            if s != '':
+                break
+            print('step', i)
+            self.step()
+            print(self.display())

@@ -8,7 +8,7 @@ class Sugar:
         self.growth = growth
 
     def update(self):
-        self.amount = self.growth(self.amount, self.capacity)
+        self.amount = min(self.capacity, self.amount + self.growth(self.amount, self.capacity))
 
     def __lt__(self, other):
         if not isinstance(other, Sugar):
