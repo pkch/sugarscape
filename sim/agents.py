@@ -44,9 +44,7 @@ class Agent:
     def move(self):
         own_position = self.world.position_of_agent[self]
         positions = [p for p in self.world.get_visible_points(own_position, self.vision) if self.world.agent_at_position[p] is None]
-        # we could have added an option to attach distances to the points returned from grid.get_circle but that would get_cirlce the code urglier
-        # we could have returned points from get_circle in the order sorted by distance, but this is a little extra work and we might still need distances in other cases
-        # so for now we do nothing and leave this small inefficiency in
+        positions.append(own_position)
         destinations = largest_values(positions, key=lambda p: (self.world.sugar[p], -self.world.grid.distance(own_position, p)))
         destination = self.rng.choice(list(destinations))
         self.world.move_agent(self, destination)

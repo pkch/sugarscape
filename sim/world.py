@@ -45,6 +45,8 @@ class World:
         return len(self.position_of_agent)
 
     def move_agent(self, agent, destination):
+        if self.position_of_agent[agent] == destination:
+            return
         if self.agent_at_position[destination] is not None:
             raise RuntimeError('Cannot move agent to an occupied spot')
         p = self.position_of_agent[agent]
