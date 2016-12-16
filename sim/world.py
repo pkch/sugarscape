@@ -71,22 +71,24 @@ class World:
         hl = ' ' + '-' * (len(matrix[0]) * 2 - 1) + '\n'
         return hl + '\n'.join('|' + ' '.join(row) + '|' for row in matrix) + '\n' + hl
 
-    def display(self):
-        matrix = [[self.display_cell(y=self.grid.height-row-1, x=col) for col in range(self.grid.length)] for row in range(self.grid.height)]
+    def display(self, *, show_sugar=False):
+        matrix = [[self.display_cell(y=self.grid.height-row-1, x=col, show_sugar=show_sugar) for col in range(self.grid.length)] for row in range(self.grid.height)]
         return self.display_matrix(matrix)
 
-    def display_cell(self, *, x, y):
+    def display_cell(self, *, x, y, show_sugar=False):
         if self.agent_at_position[x, y]:
             return '*'
-        else:
+        elif show_sugar:
             return str(self.sugar[x, y].amount)
+        else:
+            return ' '
 
-    def interactive_run(self):
-        print(self.display())
+    def interactive_run(self, show_sugar=False):
+        print(self.display(show_sugar=show_sugar))
         for i in count():
             s = input()
             if s != '':
                 break
             print('step', i)
             self.step()
-            print(self.display())
+            print(self.display(show_sugar=show_sugar))
